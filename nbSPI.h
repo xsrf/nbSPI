@@ -26,16 +26,24 @@
     #define NBSPI_TDBG_LOW
 #endif
 
-volatile uint16_t nbSPI_Size;
+volatile uint16_t nbSPI_Size = 0;
 volatile uint32_t * nbSPI_Data;
+volatile boolean nbSPI_Busy = false;
 
 void nbSPI_writeBytes(uint8_t *data, uint16_t size);
+boolean nbSPI_busy();
 void nbSPI_writeChunk();
 void nbSPI_ISR();
+
+ICACHE_RAM_ATTR boolean nbSPI_busy() {
+    if(nbSPI_Busy) return true; // true while not all data put into buffer
+    return (SPI1CMD & SPIBUSY); // true while SPI sends data
+}
 
 // This will accept data of ary length to send via SPI
 ICACHE_RAM_ATTR void nbSPI_writeBytes(uint8_t *data, uint16_t size) {
     NBSPI_TDBG_HIGH;
+    nbSPI_Busy = true;
     nbSPI_Size = size;
     nbSPI_Data = (uint32_t*) data;
     SPI0S &= ~(0x1F); // Disable and clear all interrupts on SPI0
@@ -74,6 +82,7 @@ ICACHE_RAM_ATTR void inline nbSPI_writeChunk() {
 
     SPI1CMD |= SPIBUSY; // Start sending data
 
+    if(nbSPI_Size == 0) nbSPI_Busy = false; // Clear flag after starting SPI
 }
 
 // Interrupt Handler gets called when SPI finished sending data
