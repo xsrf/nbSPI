@@ -26,9 +26,9 @@
     #define NBSPI_TDBG_LOW
 #endif
 
-volatile uint16_t nbSPI_Size = 0;
-volatile uint32_t * nbSPI_Data;
-volatile boolean nbSPI_Busy = false;
+volatile uint16_t _nbspi_size = 0;
+volatile uint32_t * _nbspi_data;
+volatile boolean _nbspi_isbusy = false;
 
 void nbSPI_writeBytes(uint8_t *data, uint16_t size);
 boolean nbSPI_busy();
@@ -36,16 +36,16 @@ void nbSPI_writeChunk();
 void nbSPI_ISR();
 
 ICACHE_RAM_ATTR boolean nbSPI_busy() {
-    if(nbSPI_Busy) return true; // true while not all data put into buffer
+    if(_nbspi_isbusy) return true; // true while not all data put into buffer
     return (SPI1CMD & SPIBUSY); // true while SPI sends data
 }
 
 // This will accept data of ary length to send via SPI
 ICACHE_RAM_ATTR void nbSPI_writeBytes(uint8_t *data, uint16_t size) {
     NBSPI_TDBG_HIGH;
-    nbSPI_Busy = true;
-    nbSPI_Size = size;
-    nbSPI_Data = (uint32_t*) data;
+    _nbspi_isbusy = true;
+    _nbspi_size = size;
+    _nbspi_data = (uint32_t*) data;
     SPI0S &= ~(0x1F); // Disable and clear all interrupts on SPI0
     SPI1S &= ~(0x1F); // Disable and clear all interrupts on SPI1
     ETS_SPI_INTR_ATTACH(nbSPI_ISR, NULL); // Set Interrupt handler
@@ -56,9 +56,9 @@ ICACHE_RAM_ATTR void nbSPI_writeBytes(uint8_t *data, uint16_t size) {
 
 // This will send up to 64 bytes via SPI
 ICACHE_RAM_ATTR void inline nbSPI_writeChunk() {    
-    uint16_t size = nbSPI_Size;
+    uint16_t size = _nbspi_size;
     if(size > 64) size = 64;
-    nbSPI_Size -= size;
+    _nbspi_size -= size;
     const uint32_t bits = (size * 8) - 1;
     const uint32_t mask = ~(SPIMMOSI << SPILMOSI);
     SPI1U1 = ((SPI1U1 & mask) | (bits << SPILMOSI));
@@ -66,13 +66,13 @@ ICACHE_RAM_ATTR void inline nbSPI_writeChunk() {
     uint32_t * fifoPtr = (uint32_t*)&SPI1W0;
     uint8_t dataSize = ((size + 3) / 4); // Words to copy to SPI buffer / will actually read beyond your data if it is not 4 Byte aligned
     while(dataSize--) {
-        *fifoPtr = *nbSPI_Data;
-        nbSPI_Data++;
+        *fifoPtr = *_nbspi_data;
+        _nbspi_data++;
         fifoPtr++;
     }
     __sync_synchronize();
 
-    if(nbSPI_Size > 0) {
+    if(_nbspi_size > 0) {
         // There is more data to send after this one, enable Interrupt
         SPI1S |= SPISTRIE; // Enable Transmission End interrupt on SPI1, SPI_TRANS_DONE_EN
     } else {
@@ -82,7 +82,7 @@ ICACHE_RAM_ATTR void inline nbSPI_writeChunk() {
 
     SPI1CMD |= SPIBUSY; // Start sending data
 
-    if(nbSPI_Size == 0) nbSPI_Busy = false; // Clear flag after starting SPI
+    if(_nbspi_size == 0) _nbspi_isbusy = false; // Clear flag after starting SPI
 }
 
 // Interrupt Handler gets called when SPI finished sending data
