@@ -16,8 +16,8 @@
 // Set an IO to measure timing
 #ifdef NBSPI_TDBG_IO
     #if NBSPI_TDBG_IO < 16
-        #define NBSPI_TDBG_HIGH GPOS |= (1<<NBSPI_TDBG_IO) // 0.333 µs
-        #define NBSPI_TDBG_LOW GPOC |= (1<<NBSPI_TDBG_IO) // 0.333 µs
+        #define NBSPI_TDBG_HIGH GPOS = (1<<NBSPI_TDBG_IO) // 0.1 µs
+        #define NBSPI_TDBG_LOW GPOC = (1<<NBSPI_TDBG_IO) // 0.1 µs
     #else
         #error "Use IO 0-15!"
     #endif
