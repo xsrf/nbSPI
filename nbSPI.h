@@ -31,11 +31,11 @@ volatile uint32_t * _nbspi_data;
 volatile boolean _nbspi_isbusy = false;
 
 void nbSPI_writeBytes(uint8_t *data, uint16_t size);
-boolean nbSPI_busy();
+boolean nbSPI_isBusy();
 void nbSPI_writeChunk();
 void nbSPI_ISR();
 
-ICACHE_RAM_ATTR boolean nbSPI_busy() {
+ICACHE_RAM_ATTR boolean nbSPI_isBusy() {
     if(_nbspi_isbusy) return true; // true while not all data put into buffer
     return (SPI1CMD & SPIBUSY); // true while SPI sends data
 }
